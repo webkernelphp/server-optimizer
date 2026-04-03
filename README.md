@@ -19,14 +19,16 @@ sudo bash server-optimizer.sh [OPTIONS]
 ### Using `wget`
 
 ```bash
-wget https://raw.githubusercontent.com/webkernelphp/server-optimizer/refs/heads/main/server-optimizer.sh -O server-optimizer.sh
+TIMESTAMP=$(date +%s)
+wget "https://raw.githubusercontent.com/webkernelphp/server-optimizer/refs/heads/main/server-optimizer.sh?ts=$TIMESTAMP" -O server-optimizer.sh
 sudo bash server-optimizer.sh [OPTIONS]
 ```
 
 ### Using `curl`
 
 ```bash
-curl -o server-optimizer.sh https://raw.githubusercontent.com/webkernelphp/server-optimizer/refs/heads/main/server-optimizer.sh
+TIMESTAMP=$(date +%s)
+curl -L "https://raw.githubusercontent.com/webkernelphp/server-optimizer/refs/heads/main/server-optimizer.sh?ts=$TIMESTAMP" -o server-optimizer.sh
 sudo bash server-optimizer.sh [OPTIONS]
 ```
 
