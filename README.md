@@ -12,7 +12,23 @@ Webkernel Server Optimizer is a Bash script to automatically configure and optim
 
 ```bash
 sudo bash server-optimizer.sh [OPTIONS]
-````
+```
+
+## Download & Run
+
+### Using `wget`
+
+```bash
+wget https://raw.githubusercontent.com/webkernelphp/server-optimizer/refs/heads/main/server-optimizer.sh -O server-optimizer.sh
+sudo bash server-optimizer.sh [OPTIONS]
+```
+
+### Using `curl`
+
+```bash
+curl -o server-optimizer.sh https://raw.githubusercontent.com/webkernelphp/server-optimizer/refs/heads/main/server-optimizer.sh
+sudo bash server-optimizer.sh [OPTIONS]
+```
 
 ## Modes
 
