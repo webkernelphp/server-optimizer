@@ -1,18 +1,17 @@
 #!/usr/bin/env bash
 # ==============================================================================
 #
-#  ██╗    ██╗███████╗██████╗ ██╗  ██╗███████╗██████╗ ███╗   ██╗███████╗██╗
-#  ██║    ██║██╔════╝██╔══██╗██║ ██╔╝██╔════╝██╔══██╗████╗  ██║██╔════╝██║
-#  ██║ █╗ ██║█████╗  ██████╔╝█████╔╝ █████╗  ██████╔╝██╔██╗ ██║█████╗  ██║
-#  ██║███╗██║██╔══╝  ██╔══██╗██╔═██╗ ██╔══╝  ██╔══██╗██║╚██╗██║██╔══╝  ██║
-#  ╚███╔███╔╝███████╗██████╔╝██║  ██╗███████╗██║  ██║██║ ╚████║███████╗███████╗
-#   ╚══╝╚══╝ ╚══════╝╚═════╝ ╚═╝  ╚═╝╚══════╝╚═╝  ╚═╝╚═╝  ╚═══╝╚══════╝╚══════╝
+#   __        __   _     _                            _
+#   \ \      / /__| |__ | | _____ _ __ _ __   ___  | |
+#    \ \ /\ / / _ \ '_ \| |/ / _ \ '__| '_ \ / _ \ | |
+#     \ V  V /  __/ |_) |   <  __/ |  | | | |  __/ | |
+#      \_/\_/ \___|_.__/|_|\_\___|_|  |_| |_|\___| |_|
 #
-#  Webkernel OS — PHP Server Optimizer
-#  https://github.com/webkernelphp/server-optimizer
+#   Webkernel OS -- PHP Server Optimizer
+#   https://github.com/webkernelphp/server-optimizer
 #
-#  Target  : Debian family (Debian 11/12, Ubuntu 20.04+)
-#  License : MIT
+#   Target  : Debian family (Debian 11/12, Ubuntu 20.04+)
+#   License : MIT
 # ==============================================================================
 
 set -euo pipefail
@@ -22,27 +21,27 @@ IFS=$'\n\t'
 # Terminal colors + symbols
 # ------------------------------------------------------------------------------
 if [[ -t 1 ]]; then
-    C_RESET="\033[0m"
-    C_BOLD="\033[1m"
-    C_DIM="\033[2m"
-    C_RED="\033[1;31m"
-    C_GREEN="\033[1;32m"
-    C_YELLOW="\033[1;33m"
-    C_BLUE="\033[1;34m"
-    C_CYAN="\033[1;36m"
-    C_WHITE="\033[1;37m"
-    C_GRAY="\033[0;37m"
+    C_RESET=$(printf '\033[0m')
+    C_BOLD=$(printf '\033[1m')
+    C_DIM=$(printf '\033[2m')
+    C_RED=$(printf '\033[1;31m')
+    C_GREEN=$(printf '\033[1;32m')
+    C_YELLOW=$(printf '\033[1;33m')
+    C_BLUE=$(printf '\033[1;34m')
+    C_CYAN=$(printf '\033[1;36m')
+    C_WHITE=$(printf '\033[1;37m')
+    C_GRAY=$(printf '\033[0;37m')
 else
     C_RESET="" C_BOLD="" C_DIM="" C_RED="" C_GREEN=""
     C_YELLOW="" C_BLUE="" C_CYAN="" C_WHITE="" C_GRAY=""
 fi
 
-SYM_OK="✔"
-SYM_WARN="⚠"
-SYM_ERR="✖"
-SYM_INFO="›"
-SYM_SKIP="⊘"
-SYM_RUN="⟳"
+SYM_OK="[OK]"
+SYM_WARN="[!]"
+SYM_ERR="[X]"
+SYM_INFO=">"
+SYM_SKIP="[-]"
+SYM_RUN="[~]"
 
 # ------------------------------------------------------------------------------
 # Defaults (overridden by CLI flags or --mode)
@@ -69,7 +68,12 @@ SCRIPT_START=$(date +%s)
 # Logging
 # ------------------------------------------------------------------------------
 _ts()   { date -u +"%H:%M:%S"; }
-_tlog() { echo "[${C_DIM}$(_ts)${C_RESET}] $*" | tee -a "$LOG_FILE"; }
+_strip_ansi() { sed 's/\x1b\[[0-9;]*m//g'; }
+_tlog() {
+    local msg="${C_DIM}[$(_ts)]${C_RESET} $*"
+    printf "%b\n" "$msg"
+    printf "%b\n" "$msg" | _strip_ansi >> "$LOG_FILE"
+}
 
 log()  { _tlog "  ${C_BLUE}${SYM_INFO}${C_RESET}  $*"; }
 ok()   { _tlog "  ${C_GREEN}${SYM_OK}${C_RESET}  $*"; }
@@ -77,16 +81,16 @@ warn() { _tlog "  ${C_YELLOW}${SYM_WARN}${C_RESET}  $*"; }
 skip() { _tlog "  ${C_GRAY}${SYM_SKIP}${C_RESET}  ${C_DIM}$*${C_RESET}"; }
 run()  { _tlog "  ${C_CYAN}${SYM_RUN}${C_RESET}  $*"; }
 die()  {
-    echo ""
+    printf "\n"
     _tlog "  ${C_RED}${SYM_ERR} FATAL${C_RESET}  $*"
-    echo ""
+    printf "\n"
     exit 1
 }
 
 section() {
-    echo ""
-    echo -e "  ${C_BOLD}${C_WHITE}▐ $* ${C_RESET}"
-    echo -e "  ${C_DIM}$(printf '─%.0s' {1..54})${C_RESET}"
+    printf "\n"
+    printf "%b\n" "  ${C_BOLD}${C_WHITE}==> $* ${C_RESET}"
+    printf "%b\n" "  ${C_DIM}------------------------------------------------------${C_RESET}"
 }
 
 elapsed() {
@@ -106,8 +110,10 @@ progress_bar() {
     local width=40
     local filled=$(( cur * width / tot ))
     local empty=$(( width - filled ))
-    local bar
-    bar="${C_GREEN}$(printf '█%.0s' $(seq 1 $filled))${C_RESET}${C_DIM}$(printf '░%.0s' $(seq 1 $empty))${C_RESET}"
+    local bar_filled bar_empty bar
+    bar_filled=$(printf '%0.s#' $(seq 1 $filled))
+    bar_empty=$(printf '%0.s-' $(seq 1 $empty))
+    bar="${C_GREEN}${bar_filled}${C_RESET}${C_DIM}${bar_empty}${C_RESET}"
     printf "\r  %b  %-30s [%b] %3d%%" \
         "${C_CYAN}${SYM_RUN}${C_RESET}" \
         "$label" \
@@ -121,46 +127,44 @@ progress_done() { echo ""; }
 # Usage
 # ------------------------------------------------------------------------------
 usage() {
-cat << EOF
-
-$(echo -e "${C_BOLD}${C_WHITE}Webkernel OS — PHP Server Optimizer${C_RESET}")
-$(echo -e "${C_DIM}https://github.com/webkernelphp/server-optimizer${C_RESET}")
-
-$(echo -e "${C_BOLD}Usage:${C_RESET}")
-  sudo bash server-optimizer.sh [OPTIONS]
-
-$(echo -e "${C_BOLD}Modes:${C_RESET}")
-  --mode=numerimondes-webkernel   Apply Numerimondes production defaults
-                                   (swap=64G, all PHP versions, composer global,
-                                    opcache+fpm+kernel tuning)
-
-$(echo -e "${C_BOLD}Options:${C_RESET}")
-  --swap=SIZE                     Add swap file (e.g. 4G, 16G, 64G)
-                                   Skipped if not enough free disk space
-  --session-tmpfs=SIZE            Sessions tmpfs size (default: 512M)
-  --php-versions=SPEC             PHP versions to tune:
-                                     all         — all installed versions (default)
-                                     8.1,8.2     — specific versions only
-                                     none        — skip PHP tuning
-  --composer=MODE                 Composer installation mode:
-                                     global                    — /usr/local/bin/composer
-                                     users=user1,user2         — per-user ~/bin/composer
-                                     skip                      — do not install
-  --no-opcache                    Skip OPcache configuration
-  --no-fpm                        Skip PHP-FPM pool tuning
-  --no-kernel                     Skip sysctl / kernel tuning
-  --log=PATH                      Log file path (default: /var/log/webkernel-optimizer.log)
-  --dry-run                       Show what would be done, make no changes
-  --force                         Skip confirmation prompts
-  -h, --help                      Show this help
-
-$(echo -e "${C_BOLD}Examples:${C_RESET}")
-  sudo bash server-optimizer.sh --mode=numerimondes-webkernel
-  sudo bash server-optimizer.sh --swap=8G --php-versions=8.2,8.3 --composer=global
-  sudo bash server-optimizer.sh --swap=32G --composer=users=alice,bob --no-kernel
-  sudo bash server-optimizer.sh --dry-run --mode=numerimondes-webkernel
-
-EOF
+    printf "\n"
+    printf "%b\n" "${C_BOLD}${C_WHITE}Webkernel OS -- PHP Server Optimizer${C_RESET}"
+    printf "%b\n" "${C_DIM}https://github.com/webkernelphp/server-optimizer${C_RESET}"
+    printf "\n"
+    printf "%b\n" "${C_BOLD}Usage:${C_RESET}"
+    printf "  sudo bash server-optimizer.sh [OPTIONS]\n"
+    printf "\n"
+    printf "%b\n" "${C_BOLD}Modes:${C_RESET}"
+    printf "  --mode=numerimondes-webkernel   Apply Numerimondes production defaults\n"
+    printf "                                   (swap=64G, all PHP, composer global,\n"
+    printf "                                    opcache+fpm+kernel tuning)\n"
+    printf "\n"
+    printf "%b\n" "${C_BOLD}Options:${C_RESET}"
+    printf "  --swap=SIZE                     Add swap file (e.g. 4G, 16G, 64G)\n"
+    printf "                                   Skipped if not enough free disk space\n"
+    printf "  --session-tmpfs=SIZE            Sessions tmpfs size (default: 512M)\n"
+    printf "  --php-versions=SPEC             PHP versions to tune:\n"
+    printf "                                     all         -- all installed (default)\n"
+    printf "                                     8.1,8.2     -- specific versions\n"
+    printf "                                     none        -- skip PHP tuning\n"
+    printf "  --composer=MODE                 Composer installation mode:\n"
+    printf "                                     global             -- /usr/local/bin/composer\n"
+    printf "                                     users=user1,user2  -- per-user ~/bin/composer\n"
+    printf "                                     skip               -- do not install\n"
+    printf "  --no-opcache                    Skip OPcache configuration\n"
+    printf "  --no-fpm                        Skip PHP-FPM pool tuning\n"
+    printf "  --no-kernel                     Skip sysctl / kernel tuning\n"
+    printf "  --log=PATH                      Log file path\n"
+    printf "  --dry-run                       Show what would be done, no changes\n"
+    printf "  --force                         Skip confirmation prompts\n"
+    printf "  -h, --help                      Show this help\n"
+    printf "\n"
+    printf "%b\n" "${C_BOLD}Examples:${C_RESET}"
+    printf "  sudo bash server-optimizer.sh --mode=numerimondes-webkernel\n"
+    printf "  sudo bash server-optimizer.sh --swap=8G --php-versions=8.2,8.3 --composer=global\n"
+    printf "  sudo bash server-optimizer.sh --swap=32G --composer=users=alice,bob --no-kernel\n"
+    printf "  sudo bash server-optimizer.sh --dry-run --mode=numerimondes-webkernel\n"
+    printf "\n"
 }
 
 # ------------------------------------------------------------------------------
@@ -219,11 +223,11 @@ dry() {
 confirm() {
     [[ "$OPT_FORCE" == true ]] && return 0
     [[ "$OPT_DRY_RUN" == true ]] && return 0
-    echo ""
-    echo -e "  ${C_YELLOW}${SYM_WARN}  $1${C_RESET}"
-    echo -ne "  ${C_BOLD}Continue? [y/N]${C_RESET} "
+    printf "\n"
+    printf "%b\n" "  ${C_YELLOW}${SYM_WARN}  $1${C_RESET}"
+    printf "%b"   "  ${C_BOLD}Continue? [y/N]${C_RESET} "
     read -r ans
-    [[ "$ans" =~ ^[Yy]$ ]] || { echo "  Aborted."; exit 0; }
+    [[ "$ans" =~ ^[Yy]$ ]] || { printf "  Aborted.\n"; exit 0; }
 }
 
 # ------------------------------------------------------------------------------
@@ -255,24 +259,24 @@ detect_php_versions() {
 # Plan summary before execution
 # ------------------------------------------------------------------------------
 print_plan() {
-    echo ""
-    echo -e "  ${C_BOLD}${C_WHITE}╔══════════════════════════════════════════════╗${C_RESET}"
-    echo -e "  ${C_BOLD}${C_WHITE}║        Webkernel Server Optimizer            ║${C_RESET}"
-    echo -e "  ${C_BOLD}${C_WHITE}╚══════════════════════════════════════════════╝${C_RESET}"
-    echo ""
+    printf "\n"
+    printf "%b\n" "  ${C_BOLD}${C_WHITE}+------------------------------------------------+${C_RESET}"
+    printf "%b\n" "  ${C_BOLD}${C_WHITE}|       Webkernel Server Optimizer               |${C_RESET}"
+    printf "%b\n" "  ${C_BOLD}${C_WHITE}+------------------------------------------------+${C_RESET}"
+    printf "\n"
     [[ -n "$OPT_MODE" ]] && \
-        echo -e "  ${C_CYAN}Mode${C_RESET}            ${C_BOLD}$OPT_MODE${C_RESET}"
-    echo -e "  ${C_CYAN}Swap${C_RESET}            ${OPT_SWAP:-${C_DIM}skip${C_RESET}}"
-    echo -e "  ${C_CYAN}Session tmpfs${C_RESET}   $OPT_SESSION_TMPFS"
-    echo -e "  ${C_CYAN}PHP versions${C_RESET}    $OPT_PHP_VERSIONS"
-    echo -e "  ${C_CYAN}Composer${C_RESET}        $OPT_COMPOSER"
-    echo -e "  ${C_CYAN}OPcache${C_RESET}         $OPT_OPCACHE"
-    echo -e "  ${C_CYAN}FPM tuning${C_RESET}      $OPT_FPM"
-    echo -e "  ${C_CYAN}Kernel tuning${C_RESET}   $OPT_KERNEL"
-    echo -e "  ${C_CYAN}Log${C_RESET}             $LOG_FILE"
+        printf "%b\n" "  ${C_CYAN}Mode${C_RESET}            ${C_BOLD}$OPT_MODE${C_RESET}"
+    printf "%b\n" "  ${C_CYAN}Swap${C_RESET}            ${OPT_SWAP:-${C_DIM}skip${C_RESET}}"
+    printf "%b\n" "  ${C_CYAN}Session tmpfs${C_RESET}   $OPT_SESSION_TMPFS"
+    printf "%b\n" "  ${C_CYAN}PHP versions${C_RESET}    $OPT_PHP_VERSIONS"
+    printf "%b\n" "  ${C_CYAN}Composer${C_RESET}        $OPT_COMPOSER"
+    printf "%b\n" "  ${C_CYAN}OPcache${C_RESET}         $OPT_OPCACHE"
+    printf "%b\n" "  ${C_CYAN}FPM tuning${C_RESET}      $OPT_FPM"
+    printf "%b\n" "  ${C_CYAN}Kernel tuning${C_RESET}   $OPT_KERNEL"
+    printf "%b\n" "  ${C_CYAN}Log${C_RESET}             $LOG_FILE"
     [[ "$OPT_DRY_RUN" == true ]] && \
-        echo -e "\n  ${C_YELLOW}${SYM_WARN}  DRY-RUN MODE — no changes will be made${C_RESET}"
-    echo ""
+        printf "\n%b\n" "  ${C_YELLOW}${SYM_WARN}  DRY-RUN MODE - no changes will be made${C_RESET}"
+    printf "\n"
 }
 
 # ------------------------------------------------------------------------------
@@ -641,54 +645,54 @@ EOF
 print_report() {
     section "VERIFICATION REPORT"
 
-    echo ""
-    echo -e "  ${C_BOLD}Memory${C_RESET}"
+    printf "\n"
+    printf "%b\n" "  ${C_BOLD}Memory${C_RESET}"
     free -h | sed 's/^/    /'
 
-    echo ""
-    echo -e "  ${C_BOLD}Swap${C_RESET}"
-    swapon --show 2>/dev/null | sed 's/^/    /' || echo "    (none)"
+    printf "\n"
+    printf "%b\n" "  ${C_BOLD}Swap${C_RESET}"
+    swapon --show 2>/dev/null | sed 's/^/    /' || printf "    (none)\n"
 
-    echo ""
-    echo -e "  ${C_BOLD}Session tmpfs${C_RESET}"
-    mount 2>/dev/null | grep "php/sessions" | sed 's/^/    /' || echo "    (none)"
+    printf "\n"
+    printf "%b\n" "  ${C_BOLD}Session tmpfs${C_RESET}"
+    mount 2>/dev/null | grep "php/sessions" | sed 's/^/    /' || printf "    (none)\n"
 
-    echo ""
-    echo -e "  ${C_BOLD}OPcache per PHP version${C_RESET}"
+    printf "\n"
+    printf "%b\n" "  ${C_BOLD}OPcache per PHP version${C_RESET}"
     for v in /usr/bin/php[0-9]*.[0-9]*; do
         [[ -x "$v" ]] || continue
         VER=$("$v" -r 'echo PHP_VERSION;' 2>/dev/null) || continue
-        STATUS=$("$v" -r 'echo ini_get("opcache.enable") ? "ON" : "OFF";' 2>/dev/null || echo "?")
-        JIT=$("$v" -r 'echo ini_get("opcache.jit_buffer_size") ?: "-";' 2>/dev/null || echo "-")
-        COLOR=$([[ "$STATUS" == "ON" ]] && echo "$C_GREEN" || echo "$C_YELLOW")
-        echo -e "    PHP ${VER}  opcache=${COLOR}${STATUS}${C_RESET}  jit_buffer=${JIT}"
+        STATUS=$("$v" -r 'echo ini_get("opcache.enable") ? "ON" : "OFF";' 2>/dev/null || printf "?")
+        JIT=$("$v" -r 'echo ini_get("opcache.jit_buffer_size") ?: "-";' 2>/dev/null || printf "-")
+        COLOR=$([[ "$STATUS" == "ON" ]] && printf "%s" "$C_GREEN" || printf "%s" "$C_YELLOW")
+        printf "%b\n" "    PHP ${VER}  opcache=${COLOR}${STATUS}${C_RESET}  jit_buffer=${JIT}"
     done
 
-    echo ""
-    echo -e "  ${C_BOLD}Composer${C_RESET}"
+    printf "\n"
+    printf "%b\n" "  ${C_BOLD}Composer${C_RESET}"
     if command -v composer &>/dev/null; then
-        echo "    $(composer --version 2>/dev/null || echo 'installed')"
+        printf "    %s\n" "$(composer --version 2>/dev/null || printf 'installed')"
     else
-        echo "    not in PATH"
+        printf "    not in PATH\n"
     fi
 
-    echo ""
-    echo -e "  ${C_BOLD}PHP-FPM services${C_RESET}"
+    printf "\n"
+    printf "%b\n" "  ${C_BOLD}PHP-FPM services${C_RESET}"
     while IFS= read -r svc; do
         [[ -z "$svc" ]] && continue
-        state=$(systemctl is-active "$svc" 2>/dev/null || echo "unknown")
-        color=$([[ "$state" == "active" ]] && echo "$C_GREEN" || echo "$C_YELLOW")
-        echo -e "    ${color}${svc}${C_RESET}  ${C_DIM}${state}${C_RESET}"
+        state=$(systemctl is-active "$svc" 2>/dev/null || printf "unknown")
+        color=$([[ "$state" == "active" ]] && printf "%s" "$C_GREEN" || printf "%s" "$C_YELLOW")
+        printf "%b\n" "    ${color}${svc}${C_RESET}  ${C_DIM}${state}${C_RESET}"
     done < <(systemctl list-units --type=service --state=active --no-legend 2>/dev/null \
              | grep -oP 'php\S+-fpm\.service' || true)
 
     local total_elapsed; total_elapsed=$(elapsed)
-    echo ""
-    echo -e "  ${C_DIM}Log file : $LOG_FILE${C_RESET}"
-    echo -e "  ${C_DIM}Duration : ${total_elapsed}${C_RESET}"
-    echo ""
-    echo -e "  ${C_BOLD}${C_GREEN}${SYM_OK}  Optimization complete.${C_RESET}"
-    echo ""
+    printf "\n"
+    printf "%b\n" "  ${C_DIM}Log file : $LOG_FILE${C_RESET}"
+    printf "%b\n" "  ${C_DIM}Duration : ${total_elapsed}${C_RESET}"
+    printf "\n"
+    printf "%b\n" "  ${C_BOLD}${C_GREEN}${SYM_OK}  Optimization complete.${C_RESET}"
+    printf "\n"
 }
 
 # ------------------------------------------------------------------------------
